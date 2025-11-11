@@ -1,4 +1,4 @@
-export class Farmer {
+export class Agent {
   id: string;
   userId: string;
   fullName: string;
