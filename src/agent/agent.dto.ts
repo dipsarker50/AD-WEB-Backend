@@ -1,7 +1,9 @@
-import {IsOptional, IsString, IsNumber, Min, IsInt, Matches, IsEmail} from 'class-validator';
+import {IsOptional, IsString, IsNumber, Min, IsInt, Matches, IsEmail, IsEnum} from 'class-validator';
 import { PartialType } from '@nestjs/mapped-types';
+import { AgentStatus } from './agent.entity';
 
 export class CreateAgentDto {
+
   @IsString()
   @Matches(/^[A-Za-z\s]+$/, { message: 'Name Should be only contain Alphabets' })
   fullName: string;
@@ -14,6 +16,10 @@ export class CreateAgentDto {
 
   @IsString() 
   phone: string;
+
+  @IsNumber()
+  @Min(18, { message: 'Age must be at least 18' })
+  age: number;
 
   @IsString() 
   @IsOptional() 
@@ -31,6 +37,11 @@ export class CreateAgentDto {
   @IsString() 
   @IsOptional() 
   nidImage?: string;
+
+  @IsEnum(AgentStatus)
+  @IsOptional()
+  status?:AgentStatus;
+  
 }
 
 export class PatchAgentDto extends PartialType(CreateAgentDto) {}

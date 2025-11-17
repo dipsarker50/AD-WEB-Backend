@@ -1,8 +1,9 @@
-import { Controller, Get,Post,Delete,Body,Param, Put, Patch,ValidationPipe, UsePipes, UseInterceptors, UploadedFile, Res, Query } from '@nestjs/common';
+import { Controller, Get,Post,Delete,Body,Param, Put, Patch,ValidationPipe, UsePipes, UseInterceptors, UploadedFile, Res, Query, ParseIntPipe } from '@nestjs/common';
 import { AgentService } from './agent.service';
 import { CreateAgentDto,PatchAgentDto} from './agent.dto';
 import { AnyFilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { MulterError,diskStorage } from 'multer';
+import { AgentEntity } from './agent.entity';
 
 
 @Controller('agent')
@@ -18,7 +19,6 @@ export class AgentController {
   @UseInterceptors(AnyFilesInterceptor())
   @UsePipes(new ValidationPipe())
   createAgent(@Body() createAgentDto: CreateAgentDto ): object {
-    console.log(createAgentDto);
     return this.AgentService.addAgent(createAgentDto);
   }
 
@@ -28,9 +28,11 @@ export class AgentController {
     return this.AgentService.deleteAgent(id);
   }
 
+
+
   @Patch('updateagent')
   @UsePipes(new ValidationPipe())
-  partialUpdateAgent(@Query('id') id: string, @Body() updateAgentDto: PatchAgentDto): object {
+  partialUpdateAgent(@Query('id') id: string, @Body() updateAgentDto: PatchAgentDto): object|null {
     return this.AgentService.partialUpdateAgent(id, updateAgentDto);
   }
 
@@ -40,11 +42,11 @@ export class AgentController {
     return this.AgentService.updateAgent(id, updateAgentDto);
   }
 
-  @Get('getagentbyid/:id')
-  @UsePipes(new ValidationPipe())
-  getAgentbyID(@Param('id') id: string): object {
-    return this.AgentService.getAgentbyID(id);
-  }
+  // @Get('getagentbyid/:id')
+  // @UsePipes(new ValidationPipe())
+  // getAgentbyID(@Param('id', ParseIntPipe) id: number): object {
+  //   return this.AgentService.getAgentbyID(id);
+  // }
 
 
   @Post('upload/:id')
@@ -66,15 +68,26 @@ export class AgentController {
       }),
     }),
   )
-  uploadFile(@Param('id') id: string, @UploadedFile() file: Express.Multer.File) {
-    this.AgentService.updateProfileImage(id, file.path);
+  async uploadFile(@Param('id') id: number, @UploadedFile() file: Express.Multer.File): Promise<object> {
+    return this.AgentService.updateProfileImage(id, file.path);
   }
 
   @Get('/getimage/:id')
-  getImages(@Param('id') id: string, @Res() res) {
-    const agent = this.AgentService.getAgentbyID(id);
-    res.sendFile(agent.nidImage, { root: './uploads' });
+  getImages(@Param('id') id: number, @Res() res) {
+   this.AgentService.getImages(id,res);
   }
 
+  
+  @Get('getagentby')
+  @UsePipes(new ValidationPipe())
+  getAgentsbyQuery( @Query('field') field: any,@Query('data') data:any): object {
+    return this.AgentService.getAgentsbyQuery(field,data);
+  }
+
+  @Get('getagentsbyage')
+  @UsePipes(new ValidationPipe())
+  getAgentListbyAge(@Query('age', ParseIntPipe) age: number, @Query('filter') filter: 'upper' | 'lower' | 'equal'): Promise<AgentEntity[]> {
+    return this.AgentService.getAgentListbyAge(age, filter);
+  }
 
 }
