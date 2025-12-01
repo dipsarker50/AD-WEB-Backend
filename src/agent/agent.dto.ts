@@ -1,6 +1,7 @@
-import {IsOptional, IsString, IsNumber, Min, IsInt, Matches, IsEmail, IsEnum} from 'class-validator';
+import {IsOptional, IsString, IsNumber, Min, IsInt, Matches, IsEmail, IsEnum, IsNotEmpty, IsBoolean} from 'class-validator';
 import { PartialType } from '@nestjs/mapped-types';
 import { AgentStatus } from './agent.entity';
+import { Column } from 'typeorm';
 
 export class CreateAgentDto {
 
@@ -11,8 +12,14 @@ export class CreateAgentDto {
   @IsString() 
   address: string;
 
-  @Matches(/^[^\s@]+@[^\s@]+\.xyz$/, { message: 'Email must be a valid .xyz domain email' })
+  @Matches(/^[^\s@]+@[^\s@]+\.(xyz|com)$/, { message: 'Email must be a valid .xyz or .com domain email' })
   email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/, { message: 'Password must be at least 8 characters long and contain both letters and numbers' })
+  password: string;
+
 
   @IsString() 
   phone: string;
@@ -41,7 +48,20 @@ export class CreateAgentDto {
   @IsEnum(AgentStatus)
   @IsOptional()
   status?:AgentStatus;
+
+
+
   
 }
 
 export class PatchAgentDto extends PartialType(CreateAgentDto) {}
+
+export class LoginAgentDto {
+  @Matches(/^[^\s@]+@[^\s@]+\.xyz$/, { message: 'Email must be a valid .xyz domain email' })
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/, { message: 'Password must be at least 8 characters long and contain both letters and numbers' })
+  password: string;
+}

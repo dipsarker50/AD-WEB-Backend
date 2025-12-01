@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AgentModule } from './agent/agent.module';
 import { ProductModule } from './product/product.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { MailerModule } from "@nestjs-modules/mailer";
 
 @Module({
   imports: [AgentModule,ProductModule, TypeOrmModule.forRoot({
@@ -16,7 +17,21 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       ssl: {
         rejectUnauthorized: false,   // required for Supabase
       },
-    }),],
+    }),
+    MailerModule.forRoot({
+      transport: {
+      host: 'smtp.gmail.com',
+      port: 465,
+      ignoreTLS: true,
+      secure: true,
+      auth: {
+      user: 'jonerics206@gmail.com',
+      pass: 'oahk xtea kyqm afva'
+      },
+      }})
+  
+  
+  ],
   controllers: [],
   providers: [],
 })

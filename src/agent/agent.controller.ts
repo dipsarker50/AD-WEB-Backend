@@ -1,10 +1,10 @@
-import { Controller, Get,Post,Delete,Body,Param, Put, Patch,ValidationPipe, UsePipes, UseInterceptors, UploadedFile, Res, Query, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get,Post,Delete,Body,Param, Put, Patch,ValidationPipe, UsePipes, UseInterceptors, UploadedFile, Res, Query, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { AgentService } from './agent.service';
-import { CreateAgentDto,PatchAgentDto} from './agent.dto';
+import { CreateAgentDto,LoginAgentDto,PatchAgentDto} from './agent.dto';
 import { AnyFilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { MulterError,diskStorage } from 'multer';
 import { AgentEntity } from './agent.entity';
-
+import { AgentGuard } from 'src/auth/agentGuard';
 
 @Controller('agent')
 export class AgentController {
@@ -15,28 +15,36 @@ export class AgentController {
     return this.AgentService.getAllAgents();
   }
 
-  @Post('createagent')
+  @Post('signup')
   @UseInterceptors(AnyFilesInterceptor())
   @UsePipes(new ValidationPipe())
   createAgent(@Body() createAgentDto: CreateAgentDto ): object {
     return this.AgentService.addAgent(createAgentDto);
   }
 
+  @Post('login')
+  @UseInterceptors(AnyFilesInterceptor())
+  @UsePipes(new ValidationPipe())
+  loginAgent(@Body() loginAgentDto: LoginAgentDto): object {
+    return this.AgentService.loginAgent(loginAgentDto);
+  }
+
   @Delete('deleteagent/:id')
+  @UseGuards(AgentGuard)
   @UsePipes(new ValidationPipe())
   deleteAgent(@Param('id') id: string): object {
     return this.AgentService.deleteAgent(id);
   }
 
-
-
   @Patch('updateagent')
+  @UseGuards(AgentGuard)
   @UsePipes(new ValidationPipe())
   partialUpdateAgent(@Query('id') id: string, @Body() updateAgentDto: PatchAgentDto): object|null {
     return this.AgentService.partialUpdateAgent(id, updateAgentDto);
   }
 
   @Put('updateagent/:id')
+  @UseGuards(AgentGuard)
   @UsePipes(new ValidationPipe())
   updateAgent(@Param('id') id: string, @Body() updateAgentDto: CreateAgentDto): object {
     return this.AgentService.updateAgent(id, updateAgentDto);
@@ -48,8 +56,8 @@ export class AgentController {
   //   return this.AgentService.getAgentbyID(id);
   // }
 
-
   @Post('upload/:id')
+  @UseGuards(AgentGuard)
   @UseInterceptors(
     FileInterceptor('nidPic', {
       fileFilter: (req, file, cb) => {
@@ -77,7 +85,6 @@ export class AgentController {
    this.AgentService.getImages(id,res);
   }
 
-  
   @Get('getagentby')
   @UsePipes(new ValidationPipe())
   getAgentsbyQuery( @Query('field') field: any,@Query('data') data:any): object {
@@ -88,6 +95,24 @@ export class AgentController {
   @UsePipes(new ValidationPipe())
   getAgentListbyAge(@Query('age', ParseIntPipe) age: number, @Query('filter') filter: 'upper' | 'lower' | 'equal'): Promise<AgentEntity[]> {
     return this.AgentService.getAgentListbyAge(age, filter);
+  }
+
+  @Get('agentproducts/:id')
+  getAgentProducts(@Param('id') id: string): object {
+    return this.AgentService.getAgentProducts(id);
+  }
+  
+  @Patch('updatepassword/:id')
+  @UseGuards(AgentGuard)
+  @UseInterceptors(AnyFilesInterceptor())
+  @UsePipes(new ValidationPipe())
+  updatePassword(@Param('id') id: string, @Body() agent: PatchAgentDto): object {
+    return this.AgentService.updatePassword(id, agent);
+  }
+
+  @Get('verify-email')
+  verifyEmail(@Query('token') token: string): Promise<object> {
+    return this.AgentService.verifyEmail(token);
   }
 
 }
