@@ -8,10 +8,15 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { MailService } from 'src/auth/Mailer/mailer.service';
 import { v4 as uuidv4 } from 'uuid';
+import { CreateProductDto } from 'src/product/product.dto';
+import { ProductEntity } from 'src/product/product.entity';
+import { PusherService } from 'src/pusher/pusher.service';
 @Injectable()
 export class AgentService {
   constructor(@InjectRepository(AgentEntity) private agentRepository: Repository<AgentEntity>,@InjectRepository(AgentImageEntity) private agentImageRepository: Repository<AgentImageEntity>,
-  private jwtService: JwtService,  private mailService: MailService ) {}
+  private jwtService: JwtService,  private mailService: MailService, private pusherService: PusherService,
+  @InjectRepository(ProductEntity) private productRepository: Repository<ProductEntity>
+ ) {}
 
   getHello(): string {
     return 'Hello World!';
@@ -33,14 +38,16 @@ export class AgentService {
     return agents;
   }
 
-  async partialUpdateAgent(id: string, AgentData: PatchAgentDto): Promise<object| null> {
-    const agent= await this.agentRepository.update(parseInt(id), AgentData)
+  async partialUpdateAgent(id: number, AgentData: PatchAgentDto): Promise<object| null> {
+    const agent= await this.agentRepository.findOneBy({id: id});
     if(agent==null){
       return {message:'Agent not found'};
     }
-    console.log(AgentData);
-    return this.agentRepository.findOneBy({id: parseInt(id)}); 
+    const updateData = { ...agent, ...AgentData };
+    await this.agentRepository.save(updateData);
+    return this.agentRepository.findOneBy({id: id}); 
   }
+
 
   updateAgent(id: string, AgentData: CreateAgentDto): object {
     return { message: 'Agent updated successfully!', values: AgentData };
@@ -94,10 +101,7 @@ export class AgentService {
     const result = await this.agentRepository.find({
      where: {[field]: data},
     });
-    return result.map(agent => ({
-      fullName: agent.fullName,
-      id: agent.id
-    }));
+    return result;
     }
 
 
@@ -118,21 +122,21 @@ export class AgentService {
     return agents;
   }
 
-  async getAgentProducts(id: string): Promise<object> {
+  async getAgentProducts(id: number): Promise<object> {
     let data=await this.agentRepository.findOne({
-      where: { id: parseInt(id) },
+      where: { id: id },
       relations: ['products'],
-      select: {
-        id: true,
-        fullName: true,
-        products: {
-          id: true,
-          name: true,
-          price: true,
-        },
-      },
+      // select: {
+      //   id: true,
+      //   fullName: true,
+      //   products: {
+      //     id: true,
+      //     name: true,
+      //     price: true,
+      //   },
+      // },
     });
-    console.log(data);
+
     if(data==null){
       return {message:'No Product Listed for this Agent'};
     }
@@ -155,17 +159,26 @@ export class AgentService {
   async loginAgent(loginAgentDto: LoginAgentDto): Promise<object> {
     const agent = await this.agentRepository.findOneBy({ email: loginAgentDto.email });
     if (!agent) {
-      return { message: 'Invalid email or password' };
+      return { message: 'Not a verified agent', success: false  };
     }else if(!agent.isEmailVerified){
-      return { message: 'Email not verified. Please verify your email before logging in.' };
+      return { message: 'Email not verified. Please verify your email before logging in.',success: false };
     }
     const result = await bcrypt.compare(loginAgentDto.password, agent.password);
     if (!result) {
-      return { message: 'Invalid email or password' };
+      return { message: 'Invalid email or password' ,success:false};
     }
+
+    
     const payload = { email: agent.email, sub: agent.id ,role:'agent'};
     const access_token = this.jwtService.sign(payload);
-    return { message: 'Login successful', agentId: agent.id, agentName: agent.fullName, access_token };
+    console.log(payload);
+    
+    await this.pusherService.trigger('agent-login', 'agent-login-channel', {
+
+          message: ` Hey ${agent.fullName}, Login successful`,
+          timestamp: new Date().toISOString(),
+        });
+    return { message: 'Login successful', agentId: agent.id, agentName: agent.fullName, access_token,success:true };
   }
 
   async addAgent(AgentData: CreateAgentDto): Promise<object> {
@@ -180,16 +193,14 @@ export class AgentService {
       const salt = await bcrypt.genSalt();
       const hashedPassword = await bcrypt.hash(AgentData.password, salt);
       
-      // Generate verification token
       const verificationToken = uuidv4();
       const verificationTokenExpiry = new Date();
       verificationTokenExpiry.setHours(verificationTokenExpiry.getHours() + 24);
       
-      // Create agent
-        const newAgent = this.agentRepository.create({
-        ...AgentData,                    // Spread DTO data
-        password: hashedPassword,        // Override password with hash
-        isEmailVerified: false,          // Add verification fields
+      const newAgent = this.agentRepository.create({
+        ...AgentData,                    
+        password: hashedPassword,        
+        isEmailVerified: false,         
         verificationToken: verificationToken,
         verificationTokenExpiry: verificationTokenExpiry,
       });
@@ -201,6 +212,12 @@ export class AgentService {
         verificationToken,
         AgentData.fullName
       );
+
+        await this.pusherService.trigger('agent-verification', 'verification-status-checked', {
+
+          message: ` Hey ${AgentData.fullName}, Verification email sent`,
+          timestamp: new Date().toISOString(),
+        });
       
       return {
         message: 'Registration successful! Check your email to verify.',
@@ -236,5 +253,27 @@ export class AgentService {
   await this.agentRepository.save(agent);
   
   return { message: 'Email verified successfully!' };
+  }
+
+
+  async createAgentProduct(id: string, productData: CreateProductDto): Promise<object> {
+    const agentId = parseInt(id);
+    const product = {
+      ...productData,
+      agentId: agentId,
+    };
+
+    await this.productRepository.save(product);
+
+    
+    return { message: 'Product created successfully', product };
+  }
+
+  async checkVerificationStatus(email: string): Promise<boolean> {
+    const data = await this.agentRepository.findOne({
+      where: { email: email },
+      select: ['id', 'fullName', 'isEmailVerified'],
+    });
+    return data ? data.isEmailVerified : false;
   }
 }

@@ -15,7 +15,7 @@ export class AgentEntity {
   @Column({type: 'varchar', length: 100})
   fullName: string;
 
-  @Column({ type: 'int' })
+  @Column({ type: 'int',default:0})
   age: number;
 
   @Column({type: 'varchar', length: 200})

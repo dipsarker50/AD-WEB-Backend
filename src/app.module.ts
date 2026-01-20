@@ -3,9 +3,11 @@ import { AgentModule } from './agent/agent.module';
 import { ProductModule } from './product/product.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MailerModule } from "@nestjs-modules/mailer";
+import { PusherModule } from './pusher/pusher.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [AgentModule,ProductModule, TypeOrmModule.forRoot({
+  imports: [AgentModule,ProductModule, PusherModule, TypeOrmModule.forRoot({
       type: 'postgres',
       host: 'aws-1-ap-south-1.pooler.supabase.com',    
       port: 5432,
@@ -26,9 +28,10 @@ import { MailerModule } from "@nestjs-modules/mailer";
       secure: true,
       auth: {
       user: 'jonerics206@gmail.com',
-      pass: ''
+      pass: 'oahk xtea kyqm afva'
       },
-      }})
+      }}),
+      ConfigModule.forRoot({ isGlobal: true })
   
   
   ],

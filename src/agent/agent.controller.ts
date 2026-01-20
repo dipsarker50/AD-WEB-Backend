@@ -1,14 +1,16 @@
-import { Controller, Get,Post,Delete,Body,Param, Put, Patch,ValidationPipe, UsePipes, UseInterceptors, UploadedFile, Res, Query, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get,Post,Delete,Body,Param, Put, Patch,ValidationPipe, UsePipes, UseInterceptors, UploadedFile, Res, Query, ParseIntPipe, UseGuards, Req } from '@nestjs/common';
 import { AgentService } from './agent.service';
 import { CreateAgentDto,LoginAgentDto,PatchAgentDto} from './agent.dto';
 import { AnyFilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { MulterError,diskStorage } from 'multer';
 import { AgentEntity } from './agent.entity';
 import { AgentGuard } from 'src/auth/agentGuard';
+import { CreateProductDto } from 'src/product/product.dto';
 
 @Controller('agent')
 export class AgentController {
   constructor(private readonly AgentService: AgentService) {}
+  
 
   @Get('allagents')
   getAllAgents(): Object {
@@ -25,12 +27,23 @@ export class AgentController {
   @Post('login')
   @UseInterceptors(AnyFilesInterceptor())
   @UsePipes(new ValidationPipe())
-  loginAgent(@Body() loginAgentDto: LoginAgentDto): object {
-    return this.AgentService.loginAgent(loginAgentDto);
+  async loginAgent(@Body() loginAgentDto: LoginAgentDto,@Res({ passthrough: true }) res): Promise<object> {
+    var result = await this.AgentService.loginAgent(loginAgentDto);
+    if (result['success'] && result['access_token']) {
+    res.cookie('access_token', result['access_token'], {
+      httpOnly: true,
+      sameSite: 'strict',
+      maxAge: 20 * 60 * 1000, // 20 minutes
+      
+    });
+    }
+  
+  return result;
+    
   }
 
   @Delete('deleteagent/:id')
-  @UseGuards(AgentGuard)
+  // @UseGuards(AgentGuard)
   @UsePipes(new ValidationPipe())
   deleteAgent(@Param('id') id: string): object {
     return this.AgentService.deleteAgent(id);
@@ -39,7 +52,7 @@ export class AgentController {
   @Patch('updateagent')
   @UseGuards(AgentGuard)
   @UsePipes(new ValidationPipe())
-  partialUpdateAgent(@Query('id') id: string, @Body() updateAgentDto: PatchAgentDto): object|null {
+  partialUpdateAgent(@Query('id') id: number, @Body() updateAgentDto: PatchAgentDto): object|null {
     return this.AgentService.partialUpdateAgent(id, updateAgentDto);
   }
 
@@ -98,7 +111,7 @@ export class AgentController {
   }
 
   @Get('agentproducts/:id')
-  getAgentProducts(@Param('id') id: string): object {
+  getAgentProducts(@Param('id') id: number): object {
     return this.AgentService.getAgentProducts(id);
   }
   
@@ -114,5 +127,40 @@ export class AgentController {
   verifyEmail(@Query('token') token: string): Promise<object> {
     return this.AgentService.verifyEmail(token);
   }
+
+  @Get('verify-status/:email')
+  checkVerificationStatus(@Param('email') email: string): Promise<boolean> {
+    return this.AgentService.checkVerificationStatus(email);
+  }
+
+  @Post('createagentproduct/:id')
+  @UseGuards(AgentGuard)
+  @UseInterceptors(AnyFilesInterceptor())
+  @UsePipes(new ValidationPipe())
+  createAgentProduct(@Param('id') id: string, @Body() productData: CreateProductDto): object {
+    return this.AgentService.createAgentProduct(id, productData);
+  }
+
+  @Post('logout')
+     @UseGuards(AgentGuard)
+    logout(@Res({ passthrough: true }) res): object {
+      res.clearCookie('access_token');
+      return { message: 'Logged out successfully' };
+    }
+
+ @Get('verify-auth')
+@UseGuards(AgentGuard)
+verifyAuth(@Req() req): object {  
+  console.log('Authenticated user:', req.user);
+  return {
+    authenticated: true,
+    agentId: req.user.sub,
+    email: req.user.email,
+    role: req.user.role
+  };
+}
+
+
+  
 
 }

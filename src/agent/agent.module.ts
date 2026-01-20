@@ -7,12 +7,13 @@ import { ProductEntity } from 'src/product/product.entity';
 import { AgentImageEntity } from './agentImage.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { MailerModule } from 'src/auth/Mailer/mailer.module';
+import { PusherModule } from 'src/pusher/pusher.module';
 
 @Module({
   imports: [TypeOrmModule.forFeature([AgentEntity]),TypeOrmModule.forFeature([ProductEntity]),TypeOrmModule.forFeature([AgentImageEntity]),JwtModule.register({
       secret: 'dipsarker_secret_key', 
       signOptions: { expiresIn: '120m' },
-    }),MailerModule],
+    }),MailerModule, PusherModule],
   controllers: [AgentController],
   providers: [AgentService],
 })

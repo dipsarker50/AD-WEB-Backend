@@ -2,6 +2,7 @@ import {IsOptional, IsString, IsNumber, Min, IsInt, Matches, IsEmail, IsEnum, Is
 import { PartialType } from '@nestjs/mapped-types';
 import { AgentStatus } from './agent.entity';
 import { Column } from 'typeorm';
+import { Type } from 'class-transformer';
 
 export class CreateAgentDto {
 
@@ -24,7 +25,8 @@ export class CreateAgentDto {
   @IsString() 
   phone: string;
 
-  @IsNumber()
+  @Type(() => Number) 
+  @IsInt()
   @Min(18, { message: 'Age must be at least 18' })
   age: number;
 
@@ -57,7 +59,7 @@ export class CreateAgentDto {
 export class PatchAgentDto extends PartialType(CreateAgentDto) {}
 
 export class LoginAgentDto {
-  @Matches(/^[^\s@]+@[^\s@]+\.xyz$/, { message: 'Email must be a valid .xyz domain email' })
+  @Matches(/^[^\s@]+@[^\s@]+\.(xyz|com)$/, { message: 'Email must be a valid .xyz or .com domain email' })
   email: string;
 
   @IsString()
