@@ -30,13 +30,21 @@ export class AgentController {
   async loginAgent(@Body() loginAgentDto: LoginAgentDto,@Res({ passthrough: true }) res): Promise<object> {
     var result = await this.AgentService.loginAgent(loginAgentDto);
     if (result['success'] && result['access_token']) {
-    res.cookie('access_token', result['access_token'], {
+    const cookieOptions: any = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // HTTPS in production
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict', // none for cross-site in production
-      domain: process.env.NODE_ENV === 'production' ? undefined : undefined, // Let browser handle domain
       maxAge: 20 * 60 * 1000, // 20 minutes
-    });
+    };
+
+    if (process.env.NODE_ENV === 'production') {
+      cookieOptions.secure = true;
+      cookieOptions.sameSite = 'none';
+      // Don't set domain, let it default to the current domain
+    } else {
+      cookieOptions.secure = false;
+      cookieOptions.sameSite = 'lax'; // Changed from strict to lax for better compatibility
+    }
+
+    res.cookie('access_token', result['access_token'], cookieOptions);
     }
   
   return result;
@@ -145,7 +153,19 @@ export class AgentController {
   @Post('logout')
      @UseGuards(AgentGuard)
     logout(@Res({ passthrough: true }) res): object {
-      res.clearCookie('access_token');
+      const clearOptions: any = {
+        httpOnly: true,
+      };
+
+      if (process.env.NODE_ENV === 'production') {
+        clearOptions.secure = true;
+        clearOptions.sameSite = 'none';
+      } else {
+        clearOptions.secure = false;
+        clearOptions.sameSite = 'lax';
+      }
+
+      res.clearCookie('access_token', clearOptions);
       return { message: 'Logged out successfully' };
     }
 

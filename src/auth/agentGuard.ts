@@ -9,6 +9,12 @@ export class AgentGuard implements CanActivate {
         const request = context.switchToHttp().getRequest();
         let token: string | null;
 
+        // Debug logging
+        console.log('=== Authentication Debug ===');
+        console.log('Cookies:', request.cookies);
+        console.log('Authorization header:', request.headers.authorization);
+        console.log('All headers:', request.headers);
+
         token = request.cookies?.access_token;
 
         if (!token) {
@@ -18,7 +24,10 @@ export class AgentGuard implements CanActivate {
             }
         }
 
+        console.log('Extracted token:', token ? 'Found' : 'Not found');
+
         if (!token) {
+            console.log('No token found - returning unauthorized');
             throw new UnauthorizedException('Unauthorized access');
         }
 
