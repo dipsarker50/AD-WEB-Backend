@@ -11,7 +11,7 @@ import { PusherModule } from 'src/pusher/pusher.module';
 
 @Module({
   imports: [TypeOrmModule.forFeature([AgentEntity]),TypeOrmModule.forFeature([ProductEntity]),TypeOrmModule.forFeature([AgentImageEntity]),JwtModule.register({
-      secret: 'dipsarker_secret_key', 
+      secret: process.env.JWT_SECRET || 'dipsarker_secret_key', 
       signOptions: { expiresIn: '120m' },
     }),MailerModule, PusherModule],
   controllers: [AgentController],

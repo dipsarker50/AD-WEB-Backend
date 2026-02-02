@@ -9,10 +9,8 @@ export class AgentGuard implements CanActivate {
         const request = context.switchToHttp().getRequest();
         let token: string | null;
 
-        // Try to get token from cookie first (HTTP-only cookie auth)
         token = request.cookies?.access_token;
 
-        // If no cookie, try Authorization header (Bearer token auth)
         if (!token) {
             const authHeader = request.headers.authorization;
             if (authHeader) {
@@ -20,7 +18,6 @@ export class AgentGuard implements CanActivate {
             }
         }
 
-        // If still no token found
         if (!token) {
             throw new UnauthorizedException('Unauthorized access');
         }
@@ -35,18 +32,6 @@ export class AgentGuard implements CanActivate {
         if (payload.role !== 'agent') {
             throw new UnauthorizedException('Agent access only');
         }
-
-        // ⭐ FIXED: Only validate ID if it exists in the request
-        // const requestedId = request.params.id || request.query.id || request.body.id;
-        // console.log('Requested Agent ID:', requestedId);
-        // if (requestedId) {
-        //     // Only check if requestedId exists
-        //     if (parseInt(requestedId) !== payload.sub) {
-        //         throw new UnauthorizedException('Request not allowed for this agent ID');
-        //     }
-        // }
-
-        // Attach user to request for use in controllers
         request.user = payload;
 
         return true;

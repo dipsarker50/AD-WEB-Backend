@@ -32,9 +32,10 @@ export class AgentController {
     if (result['success'] && result['access_token']) {
     res.cookie('access_token', result['access_token'], {
       httpOnly: true,
-      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production', // HTTPS in production
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict', // none for cross-site in production
+      domain: process.env.NODE_ENV === 'production' ? undefined : undefined, // Let browser handle domain
       maxAge: 20 * 60 * 1000, // 20 minutes
-      
     });
     }
   

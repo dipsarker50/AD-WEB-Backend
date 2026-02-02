@@ -33,7 +33,6 @@ export class ProductEntity {
   @Column({ type: 'int' })
   agentId: number;
 
-  // NEW: Rating & Reviews
   @Column({ type: 'decimal', precision: 2, scale: 1, default: 0 })
   rating: number;  // 0.0 to 5.0
 
@@ -43,7 +42,7 @@ export class ProductEntity {
   // NEW: Marketing
   @Type(() => Number) 
   @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
-  discount: number;  // Percentage discount
+  discount: number;  
 
   // NEW: Agricultural specific
   @Column({ type: 'boolean', default: false })
