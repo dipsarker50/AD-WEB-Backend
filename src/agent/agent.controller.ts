@@ -2,14 +2,18 @@ import { Controller, Get,Post,Delete,Body,Param, Put, Patch,ValidationPipe, UseP
 import { AgentService } from './agent.service';
 import { CreateAgentDto,LoginAgentDto,PatchAgentDto} from './agent.dto';
 import { AnyFilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
-import { MulterError,diskStorage } from 'multer';
+import { MulterError } from 'multer';
 import { AgentEntity } from './agent.entity';
 import { AgentGuard } from 'src/auth/agentGuard';
 import { CreateProductDto } from 'src/product/product.dto';
+import { SupabaseService } from 'src/storage/supabase.service';
 
 @Controller('agent')
 export class AgentController {
-  constructor(private readonly AgentService: AgentService) {}
+  constructor(
+    private readonly AgentService: AgentService,
+    private readonly supabaseService: SupabaseService
+  ) {}
   
 
   @Get('allagents')
@@ -30,25 +34,44 @@ export class AgentController {
   async loginAgent(@Body() loginAgentDto: LoginAgentDto,@Res({ passthrough: true }) res): Promise<object> {
     var result = await this.AgentService.loginAgent(loginAgentDto);
     if (result['success'] && result['access_token']) {
-    const cookieOptions: any = {
-      httpOnly: true,
-      maxAge: 20 * 60 * 1000, // 20 minutes
-    };
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      const cookieOptions: any = {
+        httpOnly: true,
+        maxAge: 20 * 60 * 1000, // 20 minutes
+        path: '/', // Ensure cookie is available for all paths
+        secure: isProduction, // Only secure in production (HTTPS)
+        sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-site in production
+      };
 
-    if (process.env.NODE_ENV === 'production') {
-      cookieOptions.secure = true;
-      cookieOptions.sameSite = 'none';
-      // Don't set domain, let it default to the current domain
-    } else {
-      cookieOptions.secure = false;
-      cookieOptions.sameSite = 'lax'; // Changed from strict to lax for better compatibility
-    }
+      // For production deployments like Render, ensure proper domain handling
+      if (isProduction) {
+        // Don't set domain to allow cross-origin cookies
+        // Add partitioned attribute for Chrome's third-party cookie restrictions
+        cookieOptions.partitioned = true;
+      }
 
-    res.cookie('access_token', result['access_token'], cookieOptions);
+      console.log('Setting cookie with options:', cookieOptions);
+      console.log('Environment:', process.env.NODE_ENV);
+      console.log('Frontend URL:', process.env.FRONTEND_URL);
+      
+      try {
+        res.cookie('access_token', result['access_token'], cookieOptions);
+        console.log('Cookie set successfully');
+      } catch (error) {
+        console.error('Error setting cookie:', error);
+      }
+      
+      // Always include token in response body as primary method for frontend
+      result['token'] = result['access_token'];
+      
+      // Add additional headers for better cross-origin support
+      if (isProduction) {
+        res.header('Access-Control-Expose-Headers', 'Set-Cookie');
+      }
     }
   
-  return result;
-    
+    return result;
   }
 
   @Delete('deleteagent/:id')
@@ -89,17 +112,27 @@ export class AgentController {
           cb(new MulterError('LIMIT_UNEXPECTED_FILE', 'image'), false);
         }
       },
-      limits: { fileSize:  2 * 1024 * 1024 },
-      storage: diskStorage({
-        destination: './uploads',
-        filename: function (req, file, cb) {
-          cb(null, Date.now() + '-' + file.originalname);
-        },
-      }),
+      limits: { fileSize: 2 * 1024 * 1024 },
     }),
   )
   async uploadFile(@Param('id') id: number, @UploadedFile() file: Express.Multer.File): Promise<object> {
-    return this.AgentService.updateProfileImage(id, file.path);
+    try {
+      // Upload to Supabase
+      const imageUrl = await this.supabaseService.uploadFile(
+        file,
+        `agents/${id}/${Date.now()}-${file.originalname}`,
+      );
+      
+      // Update agent profile with Supabase URL
+      return this.AgentService.updateProfileImage(id, imageUrl);
+    } catch (error) {
+      console.error('Upload error:', error);
+      return {
+        success: false,
+        message: 'Failed to upload image',
+        error: (error as Error)?.message || 'Unknown upload error',
+      };
+    }
   }
 
   @Get('/getimage/:id')

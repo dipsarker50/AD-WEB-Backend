@@ -40,13 +40,25 @@ export class ProductService {
     if (!product || !product.imageUrl) {
       return res.status(404).json({ message: 'Image not found' });
     }
-    return res.sendFile(product.imageUrl, { root: './' });
+    
+    // Since we're using Supabase URLs, return the URL in JSON format
+    // Frontend can use this URL directly to display images
+    return res.json({
+      success: true,
+      imageUrl: product.imageUrl,
+      message: 'Product image URL retrieved successfully'
+    });
   }
     async getProductImagebyName(name: string, res): Promise<void> { 
         if(!name){
             return res.status(404).json({ message: 'Image not found' });
         }
-        return res.sendFile(name, { root: './' });
+        // For Supabase URLs, we can return the URL directly
+        return res.json({
+          success: true,
+          imageUrl: name,
+          message: 'Product image URL retrieved successfully'
+        });
     }
 
   async updateProduct(id: string, productData: UpdateProductDto): Promise<object> {

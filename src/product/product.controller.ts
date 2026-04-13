@@ -2,11 +2,15 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, UseInterceptors, Upl
 import { ProductService } from "./product.service";
 import { CreateProductDto, UpdateProductDto } from "./product.dto";
 import { FileInterceptor } from '@nestjs/platform-express';
-import { MulterError, diskStorage } from 'multer';
+import { MulterError } from 'multer';
+import { SupabaseService } from 'src/storage/supabase.service';
 
 @Controller('product')
 export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(
+    private readonly productService: ProductService,
+    private readonly supabaseService: SupabaseService
+  ) {}
 
   @Get('allproducts')
   async getAllProducts(): Promise<Object> {
@@ -29,19 +33,29 @@ export class ProductController {
         }
       },
       limits: { fileSize: 2 * 1024 * 1024 },
-      storage: diskStorage({
-        destination: './uploads/products',
-        filename: function (req, file, cb) {
-          cb(null, Date.now() + '-' + file.originalname);
-        },
-      }),
     }),
   )
-  addProduct(
+  async addProduct(
     @Body() productData: CreateProductDto,
     @UploadedFile() file: Express.Multer.File
-  ): object {
-    return this.productService.addProduct(productData, file?.path);
+  ): Promise<object> {
+    try {
+      let imageUrl: string | undefined;
+      
+      if (file) {
+        // Upload to Supabase
+        imageUrl = await this.supabaseService.uploadFile(file, `products/${Date.now()}-${file.originalname}`);
+      }
+      
+      return this.productService.addProduct(productData, imageUrl);
+    } catch (error) {
+      console.error('Product upload error:', error);
+      return {
+        success: false,
+        message: 'Failed to upload product',
+        error: (error as Error)?.message || 'Unknown upload error',
+      };
+    }
   }
 
   @Get('getproductimage/:id')

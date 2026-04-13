@@ -22,7 +22,6 @@ export class AgentService {
     return 'Hello World!';
   }
 
-
   async deleteAgent(id: string): Promise<object> {
     const result=await this.agentRepository.delete(id);
     if(result.affected===0){
@@ -48,53 +47,58 @@ export class AgentService {
     return this.agentRepository.findOneBy({id: id}); 
   }
 
-
   updateAgent(id: string, AgentData: CreateAgentDto): object {
     return { message: 'Agent updated successfully!', values: AgentData };
   }
 
-  async updateProfileImage(id: number, imagePath: string): Promise<object> {
+  async updateProfileImage(id: number, imageUrl: string): Promise<object> {
     const agent = await this.agentRepository.findOne({
       where: { id },
       relations: ['agentImage'],
     });
-    const fs = require('fs');
+
     if (agent==null) {
-      fs.unlinkSync(imagePath);
       return { message: 'Agent not found' };
     }
 
-    const username = agent.fullName?.replace(/\s+/g, '_') || 'user';
-    const ext = imagePath.split('.').pop();
-    const newFileName = `${Date.now()}_${username}.${ext}`;
-    const newFilePath = `uploads/${newFileName}`;
-
-
-    fs.renameSync(imagePath, newFilePath);
+    // Store the Supabase URL directly in the database
     if (!agent.agentImage) {
-    agent.agentImage = this.agentImageRepository.create({
-      nidImagePath: newFilePath
-    });
+      agent.agentImage = this.agentImageRepository.create({
+        nidImagePath: imageUrl // Now stores Supabase URL instead of local path
+      });
     } else {
-      agent.agentImage.nidImagePath = newFilePath;
+      agent.agentImage.nidImagePath = imageUrl;
     }
+    
     await this.agentRepository.save(agent);
-    return {message: 'Profile image updated successfully!', imagePath: newFilePath, agentId: id, agentName: agent.fullName};
+    return {
+      message: 'Profile image updated successfully!', 
+      imageUrl,
+      imagePath: imageUrl,
+      agentId: id, 
+      agentName: agent.fullName
+    };
   }
 
   async getImages(id: number, @Res() res): Promise<void> {
     const agent = await this.agentRepository.findOne({where: { id }, relations: ['agentImage']});
     if (agent==null) {
-      res.status(404).send('Agent not found');
+      res.status(404).json({message: 'Agent not found'});
       return;
     }
     else if (!agent.agentImage || !agent.agentImage.nidImagePath) {
-      res.status(404).send('Image not found');
+      res.status(404).json({message: 'Image not found'});
       return;
     }
-    res.sendFile(agent.agentImage.nidImagePath,{ root: '.' });
+    
+    // Since we're using Supabase URLs, return the URL in JSON format
+    // Frontend can use this URL directly to display images
+    res.json({
+      success: true,
+      imageUrl: agent.agentImage.nidImagePath,
+      message: 'Image URL retrieved successfully'
+    });
     return;
-
   }
 
     async getAgentsbyQuery(field: any, data: any): Promise<object> {
@@ -103,7 +107,6 @@ export class AgentService {
     });
     return result;
     }
-
 
   async getAgentListbyAge(age: number, filter: 'upper' | 'lower' | 'equal'): Promise<AgentEntity[]> {
   let condition: object = { age: Equal(age) };
@@ -154,7 +157,6 @@ export class AgentService {
     await this.agentRepository.update(parseInt(id),{password:hashedPassword});
     return {message:'Password updated successfully'};
   }
-
 
   async loginAgent(loginAgentDto: LoginAgentDto): Promise<object> {
     const agent = await this.agentRepository.findOneBy({ email: loginAgentDto.email });
@@ -254,7 +256,6 @@ export class AgentService {
   
   return { message: 'Email verified successfully!' };
   }
-
 
   async createAgentProduct(id: string, productData: CreateProductDto): Promise<object> {
     const agentId = parseInt(id);

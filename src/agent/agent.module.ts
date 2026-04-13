@@ -8,6 +8,7 @@ import { AgentImageEntity } from './agentImage.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { MailerModule } from 'src/auth/Mailer/mailer.module';
 import { PusherModule } from 'src/pusher/pusher.module';
+import { SupabaseService } from 'src/storage/supabase.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([AgentEntity]),TypeOrmModule.forFeature([ProductEntity]),TypeOrmModule.forFeature([AgentImageEntity]),JwtModule.register({
@@ -15,6 +16,6 @@ import { PusherModule } from 'src/pusher/pusher.module';
       signOptions: { expiresIn: '120m' },
     }),MailerModule, PusherModule],
   controllers: [AgentController],
-  providers: [AgentService],
+  providers: [AgentService, SupabaseService],
 })
 export class AgentModule {}
