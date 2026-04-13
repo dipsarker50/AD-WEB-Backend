@@ -3,15 +3,24 @@ import { ProductEntity } from "./product.entity";
 import { Repository } from "typeorm";
 import { InjectRepository } from "@nestjs/typeorm";
 import { CreateProductDto, UpdateProductDto } from "./product.dto";
+import { SupabaseService } from "src/storage/supabase.service";
 
 @Injectable()
 export class ProductService {
-  constructor(@InjectRepository(ProductEntity) private productRepository: Repository<ProductEntity>) {}
+  constructor(
+    @InjectRepository(ProductEntity) private productRepository: Repository<ProductEntity>,
+    private readonly supabaseService: SupabaseService,
+  ) {}
 
-  getAllProducts(): Object {
-    return this.productRepository.find({
+  async getAllProducts(): Promise<Object> {
+    const products = await this.productRepository.find({
       relations: ['agent']
     });
+
+    return products.map((product) => ({
+      ...product,
+      imageUrl: this.normalizeImageUrl(product.imageUrl),
+    }));
   }
 
   addProduct(productData: CreateProductDto, filePath?: string): Promise<Object> {
@@ -30,7 +39,10 @@ export class ProductService {
     if (!product) {
       return { message: 'Product not found' };
     }
-    return product;
+    return {
+      ...product,
+      imageUrl: this.normalizeImageUrl(product.imageUrl),
+    };
   }
 
   async getProductImage(id: string, res): Promise<void> {
@@ -45,7 +57,7 @@ export class ProductService {
     // Frontend can use this URL directly to display images
     return res.json({
       success: true,
-      imageUrl: product.imageUrl,
+      imageUrl: this.normalizeImageUrl(product.imageUrl),
       message: 'Product image URL retrieved successfully'
     });
   }
@@ -56,10 +68,15 @@ export class ProductService {
         // For Supabase URLs, we can return the URL directly
         return res.json({
           success: true,
-          imageUrl: name,
+          imageUrl: this.normalizeImageUrl(name),
           message: 'Product image URL retrieved successfully'
         });
     }
+
+  private normalizeImageUrl(imageUrl?: string): string | undefined {
+    if (!imageUrl) return imageUrl;
+    return this.supabaseService.toDisplayUrl(imageUrl);
+  }
 
   async updateProduct(id: string, productData: UpdateProductDto): Promise<object> {
     let data=await this.productRepository.findOne({

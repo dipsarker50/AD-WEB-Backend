@@ -11,10 +11,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { CreateProductDto } from 'src/product/product.dto';
 import { ProductEntity } from 'src/product/product.entity';
 import { PusherService } from 'src/pusher/pusher.service';
+import { SupabaseService } from 'src/storage/supabase.service';
 @Injectable()
 export class AgentService {
   constructor(@InjectRepository(AgentEntity) private agentRepository: Repository<AgentEntity>,@InjectRepository(AgentImageEntity) private agentImageRepository: Repository<AgentImageEntity>,
   private jwtService: JwtService,  private mailService: MailService, private pusherService: PusherService,
+  private readonly supabaseService: SupabaseService,
   @InjectRepository(ProductEntity) private productRepository: Repository<ProductEntity>
  ) {}
 
@@ -95,7 +97,7 @@ export class AgentService {
     // Frontend can use this URL directly to display images
     res.json({
       success: true,
-      imageUrl: agent.agentImage.nidImagePath,
+      imageUrl: this.supabaseService.toDisplayUrl(agent.agentImage.nidImagePath),
       message: 'Image URL retrieved successfully'
     });
     return;

@@ -94,6 +94,33 @@ export class SupabaseService {
     return publicUrl;
   }
 
+  toDisplayUrl(storedValue: string): string {
+    if (!storedValue) return storedValue;
+
+    const signMarker = `/object/sign/${this.bucketName}/`;
+    const publicMarker = `/object/public/${this.bucketName}/`;
+
+    if (storedValue.includes(publicMarker)) {
+      return storedValue;
+    }
+
+    if (storedValue.includes(signMarker)) {
+      const filePathWithQuery = storedValue.split(signMarker)[1] || '';
+      const filePath = decodeURIComponent(filePathWithQuery.split('?')[0] || '');
+      return this.getPublicUrl(filePath);
+    }
+
+    if (storedValue.startsWith('http://') || storedValue.startsWith('https://')) {
+      return storedValue;
+    }
+
+    const normalizedPath = storedValue
+      .replace(/^\/+/, '')
+      .replace(/^uploads\//, '');
+
+    return this.getPublicUrl(normalizedPath);
+  }
+
   extractFileNameFromUrl(url: string): string {
     // Extract filename from Supabase URL
     const marker = `/object/public/${this.bucketName}/`;
